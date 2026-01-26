@@ -4,10 +4,10 @@ pipeline {
     environment {
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_IMAGE = 'your-username/simple-cicd-app'
-        GIT_REPO = 'https://github.com/your-username/simple-cicd-app.git'
+        GIT_REPO = 'https://github.com/raflial75/testingcicd.git'
         CONFIG_REPO = 'https://github.com/your-username/k8s-config.git'
         DOCKER_CREDENTIALS = 'docker-hub-credentials'
-        GIT_CREDENTIALS = 'git-credentials'
+        GIT_CREDENTIALS = 'github-credentials'
     }
     
     stages {
