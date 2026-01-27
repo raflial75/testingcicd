@@ -1,5 +1,33 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  containers:
+  - name: node
+    image: node:18-alpine
+    command:
+    - cat
+    tty: true
+  - name: docker
+    image: docker:24-dind
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
     
     environment {
         DOCKER_REGISTRY = 'docker.io'
@@ -20,44 +48,52 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                echo 'Installing Node.js dependencies...'
-                sh 'npm install'
+                container('node') {
+                    echo 'Installing Node.js dependencies...'
+                    sh 'npm install'
+                }
             }
         }
         
         stage('Run Tests') {
             steps {
-                echo 'Running tests...'
-                sh 'npm test'
+                container('node') {
+                    echo 'Running tests...'
+                    sh 'npm test'
+                }
             }
         }
         
         stage('Build Docker Image') {
             steps {
-                script {
-                    echo 'Building Docker image...'
-                    def imageTag = "${env.BUILD_NUMBER}"
-                    sh """
-                        docker build -t ${DOCKER_IMAGE}:${imageTag} .
-                        docker tag ${DOCKER_IMAGE}:${imageTag} ${DOCKER_IMAGE}:latest
-                    """
+                container('docker') {
+                    script {
+                        echo 'Building Docker image...'
+                        def imageTag = "${env.BUILD_NUMBER}"
+                        sh """
+                            docker build -t ${DOCKER_IMAGE}:${imageTag} .
+                            docker tag ${DOCKER_IMAGE}:${imageTag} ${DOCKER_IMAGE}:latest
+                        """
+                    }
                 }
             }
         }
         
         stage('Push Docker Image') {
             steps {
-                script {
-                    echo 'Pushing Docker image to registry...'
-                    def imageTag = "${env.BUILD_NUMBER}"
-                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}", 
-                                                      usernameVariable: 'DOCKER_USER', 
-                                                      passwordVariable: 'DOCKER_PASS')]) {
-                        sh """
-                            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin ${DOCKER_REGISTRY}
-                            docker push ${DOCKER_IMAGE}:${imageTag}
-                            docker push ${DOCKER_IMAGE}:latest
-                        """
+                container('docker') {
+                    script {
+                        echo 'Pushing Docker image to registry...'
+                        def imageTag = "${env.BUILD_NUMBER}"
+                        withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}", 
+                                                          usernameVariable: 'DOCKER_USER', 
+                                                          passwordVariable: 'DOCKER_PASS')]) {
+                            sh """
+                                echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin ${DOCKER_REGISTRY}
+                                docker push ${DOCKER_IMAGE}:${imageTag}
+                                docker push ${DOCKER_IMAGE}:latest
+                            """
+                        }
                     }
                 }
             }
@@ -98,7 +134,7 @@ pipeline {
         stage('Trigger ArgoCD Sync') {
             steps {
                 echo 'ArgoCD will automatically detect changes and sync...'
-                echo 'Build completed! Image tag: ${BUILD_NUMBER}'
+                echo "Build completed! Image tag: ${env.BUILD_NUMBER}"
             }
         }
     }
