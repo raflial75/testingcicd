@@ -45,6 +45,15 @@ spec:
                 git branch: 'main', url: "${GIT_REPO}"
             }
         }
+
+        stage('Setup Node') {
+            steps {
+                sh '''
+                curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+                apt-get install -y nodejs
+                '''
+            }
+        }
         
         stage('Install Dependencies') {
             steps {
