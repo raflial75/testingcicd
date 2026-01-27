@@ -20,10 +20,12 @@ pipeline {
 
         stage('Setup Node') {
             steps {
-                sh '''
-                curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-                apt-get install -y nodejs
-                '''
+                container(node){
+                    sh '''
+                    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+                    apt-get install -y nodejs
+                    '''
+                }
             }
         }
         
