@@ -1,5 +1,32 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            defaultContainer 'node'
+            yaml """
+        apiVersion: v1
+        kind: Pod
+        spec:
+        containers:
+        - name: node
+            image: node:18-alpine
+            command: ['cat']
+            tty: true
+
+        - name: docker
+            image: docker:24-cli
+            command: ['cat']
+            tty: true
+            volumeMounts:
+            - name: docker-sock
+            mountPath: /var/run/docker.sock
+
+        volumes:
+        - name: docker-sock
+            hostPath:
+            path: /var/run/docker.sock
+        """
+        }
+    }
     
     environment {
         DOCKER_REGISTRY = 'docker.io'
