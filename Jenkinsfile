@@ -1,33 +1,5 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml """
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    jenkins: agent
-spec:
-  containers:
-  - name: node
-    image: node:18-alpine
-    command:
-    - cat
-    tty: true
-  - name: docker
-    image: docker:24-dind
-    securityContext:
-      privileged: true
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
-  volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
-"""
-        }
-    }
+    agent any
     
     environment {
         DOCKER_REGISTRY = 'docker.io'
