@@ -1,5 +1,9 @@
 pipeline {
     agent any
+
+    tools{
+        nodejs 'NodeJS-25.4.0'
+    }
     
     environment {
         GIT_REPO = 'https://github.com/raflial75/testingcicd.git'
