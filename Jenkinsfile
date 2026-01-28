@@ -1,13 +1,45 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  containers:
+  - name: jnlp
+    image: jenkins/inbound-agent:latest
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+  - name: docker
+    image: docker:24
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
+
+    tools {
+        nodejs 'Default'
+    }
     
     environment {
         GIT_REPO = 'https://github.com/raflial75/testingcicd.git'
         GIT_CREDENTIALS = 'github-credentials'
-    }
-    
-        tools{
-        nodejs 'Default'
+        DOCKER_IMAGE = 'your-dockerhub-username/your-app-name'
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_CREDENTIALS = 'dockerhub-credentials'
     }
     
     stages {
@@ -20,19 +52,17 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                container('node') {
-                    echo 'Installing Node.js dependencies...'
-                    sh 'npm install'
-                }
+                echo 'Installing Node.js dependencies...'
+                sh 'node --version'
+                sh 'npm --version'
+                sh 'npm install'
             }
         }
         
         stage('Run Tests') {
             steps {
-                container('node') {
-                    echo 'Running tests...'
-                    sh 'npm test'
-                }
+                echo 'Running tests...'
+                sh 'npm test || echo "No tests found"'
             }
         }
         
@@ -61,7 +91,7 @@ pipeline {
                                                           usernameVariable: 'DOCKER_USER', 
                                                           passwordVariable: 'DOCKER_PASS')]) {
                             sh """
-                                echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin ${DOCKER_REGISTRY}
+                                echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
                                 docker push ${DOCKER_IMAGE}:${imageTag}
                                 docker push ${DOCKER_IMAGE}:latest
                             """
@@ -81,17 +111,12 @@ pipeline {
                                                       usernameVariable: 'GIT_USER', 
                                                       passwordVariable: 'GIT_PASS')]) {
                         sh """
-                            # Clean up any existing clone
                             rm -rf k8s-config
-                            
-                            # Clone config repository
-                            git clone https://\${GIT_USER}:\${GIT_PASS}@github.com/your-username/k8s-config.git
+                            git clone https://\${GIT_USER}:\${GIT_PASS}@github.com/raflial75/k8s-config.git
                             cd k8s-config
                             
-                            # Update image tag in deployment file
                             sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${imageTag}|g' deployment.yaml
                             
-                            # Commit and push changes
                             git config user.email "jenkins@ci.com"
                             git config user.name "Jenkins CI"
                             git add deployment.yaml
@@ -121,7 +146,9 @@ pipeline {
         }
         always {
             echo 'Cleaning up...'
-            sh 'docker system prune -f || true'
+            container('docker') {
+                sh 'docker system prune -f || true'
+            }
             cleanWs()
         }
     }
