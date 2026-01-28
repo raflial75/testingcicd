@@ -29,6 +29,10 @@ spec:
 """
         }
     }
+
+    tools {
+        nodejs 'Default'
+    }
     
     environment {
         GIT_REPO = 'https://github.com/raflial75/testingcicd.git'
