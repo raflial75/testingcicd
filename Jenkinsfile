@@ -1,13 +1,13 @@
 pipeline {
     agent any
-
-    tools{
-        nodejs 'Default'
-    }
     
     environment {
         GIT_REPO = 'https://github.com/raflial75/testingcicd.git'
         GIT_CREDENTIALS = 'github-credentials'
+    }
+    
+        tools{
+        nodejs 'Default'
     }
     
     stages {
