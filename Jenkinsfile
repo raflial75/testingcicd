@@ -14,8 +14,8 @@ spec:
     volumeMounts:
     - name: docker-sock
       mountPath: /var/run/docker.sock
-  - name: node
-    image: node:20-bullseye
+  - name: docker
+    image: docker:24
     command:
     - cat
     tty: true
