@@ -11,26 +11,22 @@ spec:
   containers:
   - name: jnlp
     image: jenkins/inbound-agent:latest
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
   - name: nodejs
     image: node:18-alpine
     command:
     - cat
     tty: true
-  - name: docker
-    image: docker:24-cli
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
     command:
-    - cat
+    - /busybox/cat
     tty: true
     volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
+    - name: docker-config
+      mountPath: /kaniko/.docker
   volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
+  - name: docker-config
+    emptyDir: {}
 """
         }
     }
