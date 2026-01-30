@@ -34,7 +34,7 @@ spec:
     environment {
         GIT_REPO = 'https://github.com/raflial75/testingcicd.git'
         GIT_CREDENTIALS = 'github-credentials'
-        DOCKER_IMAGE = 'your-dockerhub-username/your-app-name'
+        DOCKER_IMAGE = 'justalf/testing'
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_CREDENTIALS = 'dockerhub-credentials'
     }
