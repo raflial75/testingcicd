@@ -14,8 +14,13 @@ spec:
     volumeMounts:
     - name: docker-sock
       mountPath: /var/run/docker.sock
+  - name: nodejs
+    image: node:18-alpine
+    command:
+    - cat
+    tty: true
   - name: docker
-    image: docker:24
+    image: docker:24-cli
     command:
     - cat
     tty: true
@@ -28,10 +33,6 @@ spec:
       path: /var/run/docker.sock
 """
         }
-    }
-
-    tools {
-        nodejs 'Default'
     }
     
     environment {
@@ -52,17 +53,21 @@ spec:
         
         stage('Install Dependencies') {
             steps {
-                echo 'Installing Node.js dependencies...'
-                sh 'node --version'
-                sh 'npm --version'
-                sh 'npm install'
+                container('nodejs') {
+                    echo 'Installing Node.js dependencies...'
+                    sh 'node --version'
+                    sh 'npm --version'
+                    sh 'npm install'
+                }
             }
         }
         
         stage('Run Tests') {
             steps {
-                echo 'Running tests...'
-                sh 'npm test || echo "No tests found"'
+                container('nodejs') {
+                    echo 'Running tests...'
+                    sh 'npm test || echo "No tests found"'
+                }
             }
         }
         
@@ -103,26 +108,29 @@ spec:
         
         stage('Update Kubernetes Manifests') {
             steps {
-                script {
-                    echo 'Updating Kubernetes manifests...'
-                    def imageTag = "${env.BUILD_NUMBER}"
-                    
-                    withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS}", 
-                                                      usernameVariable: 'GIT_USER', 
-                                                      passwordVariable: 'GIT_PASS')]) {
-                        sh """
-                            rm -rf k8s-config
-                            git clone https://\${GIT_USER}:\${GIT_PASS}@github.com/raflial75/k8s-config.git
-                            cd k8s-config
-                            
-                            sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${imageTag}|g' deployment.yaml
-                            
-                            git config user.email "jenkins@ci.com"
-                            git config user.name "Jenkins CI"
-                            git add deployment.yaml
-                            git commit -m "Update image to ${imageTag} - Build #${env.BUILD_NUMBER}" || echo "No changes to commit"
-                            git push origin main
-                        """
+                container('nodejs') {
+                    script {
+                        echo 'Updating Kubernetes manifests...'
+                        def imageTag = "${env.BUILD_NUMBER}"
+                        
+                        withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS}", 
+                                                          usernameVariable: 'GIT_USER', 
+                                                          passwordVariable: 'GIT_PASS')]) {
+                            sh """
+                                apk add --no-cache git
+                                rm -rf k8s-config
+                                git clone https://\${GIT_USER}:\${GIT_PASS}@github.com/raflial75/k8s-config.git
+                                cd k8s-config
+                                
+                                sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${imageTag}|g' deployment.yaml
+                                
+                                git config user.email "jenkins@ci.com"
+                                git config user.name "Jenkins CI"
+                                git add deployment.yaml
+                                git commit -m "Update image to ${imageTag} - Build #${env.BUILD_NUMBER}" || echo "No changes to commit"
+                                git push origin main
+                            """
+                        }
                     }
                 }
             }
